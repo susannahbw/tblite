@@ -197,6 +197,7 @@ dump_param = error_check(lib.tblite_dump_param)
 export_gfn2_param = error_check(lib.tblite_export_gfn2_param)
 export_gfn1_param = error_check(lib.tblite_export_gfn1_param)
 export_ipea1_param = error_check(lib.tblite_export_ipea1_param)
+add_post_processing_cli = error_check(lib.tblite_add_post_processing_cli)
 
 
 def _delete_result(result) -> None:

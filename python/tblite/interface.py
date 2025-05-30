@@ -364,7 +364,7 @@ class Calculator(Structure):
     be updated, while changing the boundary conditions, atomic types or number of atoms
     require the complete reconstruction of the calculator instance.
 
-    Available methods to parametrization of the calculator are:
+    Available methods for parametrization of the calculator are:
 
     **GFN2-xTB**:
 
@@ -408,6 +408,11 @@ class Calculator(Structure):
     * V. Asgeirsson, C. Bauer and S. Grimme, *Chem. Sci.* (2017), **8**, 4879.
       DOI: `10.1039/c7sc00601b <https://dx.doi.org/10.1039/c7sc00601b>`_
 
+    **custom**:
+
+    Custom parameterisation of the xTB Hamiltonian that will be read from a user-provided
+    parameter file. The parameter file must be provided in the .toml format.
+
     Example
     -------
     >>> from tblite.interface import Calculator
@@ -448,6 +453,7 @@ class Calculator(Structure):
         "GFN2-xTB": library.new_gfn2_calculator,
         "GFN1-xTB": library.new_gfn1_calculator,
         "IPEA1-xTB": library.new_ipea1_calculator,
+        "custom": library.new_xtb_calculator,
     }
     _setter = {
         "accuracy": library.set_calculator_accuracy,
@@ -488,6 +494,7 @@ class Calculator(Structure):
         uhf: Optional[int] = None,
         lattice: Optional[np.ndarray] = None,
         periodic: Optional[np.ndarray] = None,
+        param_path: Optional[str] = None,
         **context_kwargs,
     ):
         """
@@ -507,7 +514,24 @@ class Calculator(Structure):
             raise TBLiteValueError(
                 f"Method '{method}' is not available for this calculator"
             )
-        self._calc = self._loader[method](self._ctx, self._mol)
+        
+        if method == "custom" and param_path is None:
+            raise TBLiteValueError(
+                "Custom calculator requires a parameter file to be provided"
+            )
+        if method == "custom":
+            if not param_path.endswith(".toml"):
+                raise TBLiteValueError(
+                    "Custom calculator requires a parameter file in .toml format"
+                )
+            table = library.new_table()
+            param = library.new_param()
+            error = library.new_error()
+            self._param = library.load_param(error, param, table)
+
+            self._calc = self._loader[method](self._ctx, self._mol, self._param)
+        else:
+            self._calc = self._loader[method](self._ctx, self._mol)
         self._method = method
 
     def set(self, attribute: str, value) -> None:
@@ -638,6 +662,94 @@ class Calculator(Structure):
         _res = Result(res) if copy or res is None else res
         library.get_singlepoint(self._ctx, self._mol, self._calc, _res._res)
         return _res
+    
+
+class Parameters:
+    """
+    .. Parameter wrapper for tblite_param
+
+    Represents a wrapped parameter object in ``tblite``.
+    Allows loading parameters from a `.toml` file and modifying them programmatically.
+
+    Example
+    -------
+    >>> from tblite.interface import Parameters
+    >>> params = Parameters("path/to/params.toml")
+    >>> params.set("accuracy", 1.0)
+    """
+
+    _param = library.ffi.NULL
+
+    def __init__(self, filepath: str):
+        """
+        Initialize the Parameters object by loading a `.toml` file.
+
+        Parameters
+        ----------
+        filepath : str
+            Path to the `.toml` file containing parameter information.
+
+        Raises
+        ------
+        TBLiteValueError
+            If the file is not a `.toml` file or cannot be loaded.
+        """
+        if not filepath.endswith(".toml"):
+            raise TBLiteValueError("Parameter file must be in .toml format")
+
+        table = library.new_table()
+        error = library.new_error()
+        param = library.new_param()
+
+        library.add_post_processing_cli(filepath.encode(), param, table, error)
+
+        if library.tblite_check(error):
+            raise TBLiteRuntimeError("Failed to load parameters from file")
+        self._param = param 
+
+    def set(self, key: str, value: Any) -> None:
+        """
+        Set or modify a parameter value.
+
+        Parameters
+        ----------
+        key : str
+            The name of the parameter to modify.
+        value : Any
+            The new value for the parameter.
+
+        Raises
+        ------
+        TBLiteValueError
+            If the key or value is invalid.
+        """
+        table = library.new_table()
+        error = library.new_error()
+
+        if isinstance(value, float):
+            library.table_set_double(error, table, key.encode(), library.ffi.new("double*", value), 0)
+        elif isinstance(value, int):
+            library.table_set_int64_t(error, table, key.encode(), library.ffi.new("int64_t*", value), 0)
+        elif isinstance(value, bool):
+            library.table_set_bool(error, table, key.encode(), library.ffi.new("bool*", value), 0)
+        elif isinstance(value, str):
+            library.table_set_char(error, table, key.encode(), library.ffi.new("char[]", value.encode()), 0)
+        else:
+            raise TBLiteValueError(f"Unsupported value type for key '{key}'")
+
+        if library.tblite_check(error):
+            raise TBLiteRuntimeError(f"Failed to set parameter '{key}'")
+
+    def get_param(self):
+        """
+        Retrieve the underlying tblite_param object.
+
+        Returns
+        -------
+        tblite_param
+            The tblite_param object wrapped by this class.
+        """
+        return self._param
 
 
 def _cast(ctype, array):
