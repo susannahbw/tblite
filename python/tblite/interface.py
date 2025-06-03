@@ -22,7 +22,9 @@ CFFI generated wrappers.
 
 from typing import Any, List, Optional, Union
 
+import os
 import numpy as np
+import toml
 from . import library
 from .exceptions import TBLiteRuntimeError, TBLiteValueError
 
@@ -479,10 +481,10 @@ class Calculator(Structure):
         "gb-solvation": library.new_gb_solvation,
     }
     _post_processing = {
-        "bond-orders" : "bond-orders",
-        "molecular-multipoles" : "molmom",
-        "xtbml" : "xtbml",
-        "xtbml_xyz" : "xtbml_xyz"
+        "bond-orders": "bond-orders",
+        "molecular-multipoles": "molmom",
+        "xtbml": "xtbml",
+        "xtbml_xyz": "xtbml_xyz"
     }
 
     def __init__(
@@ -514,7 +516,7 @@ class Calculator(Structure):
             raise TBLiteValueError(
                 f"Method '{method}' is not available for this calculator"
             )
-        
+
         if method == "custom" and param_path is None:
             raise TBLiteValueError(
                 "Custom calculator requires a parameter file to be provided"
@@ -524,12 +526,10 @@ class Calculator(Structure):
                 raise TBLiteValueError(
                     "Custom calculator requires a parameter file in .toml format"
                 )
-            table = library.new_table()
-            param = library.new_param()
-            error = library.new_error()
-            self._param = library.load_param(error, param, table)
-
-            self._calc = self._loader[method](self._ctx, self._mol, self._param)
+            param = Parameters(param_path)
+            self._param = param.get_param()
+            self._calc = self._loader[method](
+                self._ctx, self._mol, self._param)
         else:
             self._calc = self._loader[method](self._ctx, self._mol)
         self._method = method
@@ -640,7 +640,6 @@ class Calculator(Structure):
                 f"Attribute '{attribute}' is not supported in this calculator"
             )
         return self._getter[attribute](self._ctx, self._calc)
-        
 
     def singlepoint(
         self, res: Optional[Result] = None, copy: bool = False
@@ -662,93 +661,137 @@ class Calculator(Structure):
         _res = Result(res) if copy or res is None else res
         library.get_singlepoint(self._ctx, self._mol, self._calc, _res._res)
         return _res
-    
+
 
 class Parameters:
     """
     .. Parameter wrapper for tblite_param
 
     Represents a wrapped parameter object in ``tblite``.
-    Allows loading parameters from a `.toml` file and modifying them programmatically.
+    Parameters can be loaded from an existing hard-coded method and optionally modified
+    or read in from a '.toml' file to create a custom parameterization from scratch.
+    The parameters are immutable once created, but can be modified using the `set` method.
+
+    Existing parameterizations that can be loaded are:
+
+    **GFN2-xTB**:
+
+    Self-consistent extended tight binding Hamiltonian with
+    anisotropic second order electrostatic contributions,
+    third order on-site contributions and self-consistent D4 dispersion.
+
+    Geometry, frequency and non-covalent interactions parametrisation for
+    elements up to Z=86.
+
+    Cite as:
+
+    * C. Bannwarth, S. Ehlert and S. Grimme.,
+      *J. Chem. Theory Comput.* (2019), **15**, 1652-1671.
+      DOI: `10.1021/acs.jctc.8b01176 <https://dx.doi.org/10.1021/acs.jctc.8b01176>`_
+
+    **GFN1-xTB**:
+
+    Self-consistent extended tight binding Hamiltonian with
+    isotropic second order electrostatic contributions and
+    third order on-site contributions.
+
+    Geometry, frequency and non-covalent interactions parametrisation for
+    elements up to Z=86.
+
+    Cite as:
+
+    * S. Grimme, C. Bannwarth, P. Shushkov,
+      *J. Chem. Theory Comput.* (2017), **13**, 1989-2009.
+      DOI: `10.1021/acs.jctc.7b00118 <https://dx.doi.org/10.1021/acs.jctc.7b00118>`_
+
+    **IPEA1-xTB**:
+
+    Special parametrisation for the GFN1-xTB Hamiltonian to improve the
+    description of vertical ionisation potentials and electron affinities.
+    Uses additional diffuse s-functions on light main group elements.
+    Parametrised up to Z=86.
+
+    Cite as:
+
+    * V. Asgeirsson, C. Bauer and S. Grimme, *Chem. Sci.* (2017), **8**, 4879.
+      DOI: `10.1039/c7sc00601b <https://dx.doi.org/10.1039/c7sc00601b>`_
 
     Example
     -------
     >>> from tblite.interface import Parameters
-    >>> params = Parameters("path/to/params.toml")
-    >>> params.set("accuracy", 1.0)
+    >>> params = Parameters("custom", "path/to/params.toml")
+    >>> params.set("H-H", 0.96)
     """
 
     _param = library.ffi.NULL
 
-    def __init__(self, filepath: str):
+    def __init__(self,
+                 method: str,
+                 param_path: Optional[str] = None):
         """
-        Initialize the Parameters object by loading a `.toml` file.
-
+        Initialize the Parameters object.
         Parameters
         ----------
-        filepath : str
+
+        method : str
+            The method to use for parameterization. Can be one of:
+            - "GFN2-xTB"
+            - "GFN1-xTB"
+            - "IPEA1-xTB"
+            - "custom" (requires `param_path` to be provided)
+
+        param_path : str
             Path to the `.toml` file containing parameter information.
 
         Raises
         ------
         TBLiteValueError
-            If the file is not a `.toml` file or cannot be loaded.
+            If the method is not one of the options listed above.
+            If 'custom' method is specified and param_path is not 
+            a `.toml` file or cannot be loaded.
         """
-        if not filepath.endswith(".toml"):
-            raise TBLiteValueError("Parameter file must be in .toml format")
+        self._param = library.new_param()
+        self._table = library.new_table()
 
-        table = library.new_table()
-        error = library.new_error()
-        param = library.new_param()
-
-        library.add_post_processing_cli(filepath.encode(), param, table, error)
-
-        if library.tblite_check(error):
-            raise TBLiteRuntimeError("Failed to load parameters from file")
-        self._param = param 
-
-    def set(self, key: str, value: Any) -> None:
-        """
-        Set or modify a parameter value.
-
-        Parameters
-        ----------
-        key : str
-            The name of the parameter to modify.
-        value : Any
-            The new value for the parameter.
-
-        Raises
-        ------
-        TBLiteValueError
-            If the key or value is invalid.
-        """
-        table = library.new_table()
-        error = library.new_error()
-
-        if isinstance(value, float):
-            library.table_set_double(error, table, key.encode(), library.ffi.new("double*", value), 0)
-        elif isinstance(value, int):
-            library.table_set_int64_t(error, table, key.encode(), library.ffi.new("int64_t*", value), 0)
-        elif isinstance(value, bool):
-            library.table_set_bool(error, table, key.encode(), library.ffi.new("bool*", value), 0)
-        elif isinstance(value, str):
-            library.table_set_char(error, table, key.encode(), library.ffi.new("char[]", value.encode()), 0)
+        if method.upper() == "GFN2-XTB":
+            library.export_gfn2_param(self._param)
+        elif method.upper() == "GFN1-XTB":
+            library.export_gfn1_param(self._param)
+        elif method.upper() == "IPEA1-XTB":
+            library.export_ipea1_param(self._param)
+        elif method.lower() == "custom":
+            if param_path is None or not os.path.isfile(param_path):
+                raise TBLiteValueError(
+                    "For 'custom', a valid 'filepath' kwarg must be provided.")
+            data = toml.load(param_path)
+            self._table = library.new_table()
+            self._fill_table_from_dict(self._table, data)
+            library.load_param(self._param, self._table)
         else:
-            raise TBLiteValueError(f"Unsupported value type for key '{key}'")
+            raise TBLiteValueError(f"Unknown method '{method}'.")
 
-        if library.tblite_check(error):
-            raise TBLiteRuntimeError(f"Failed to set parameter '{key}'")
+    def _fill_table_from_dict(self, table, data):
+        """
+        Recursively fill a tblite table from a Python dict using the appropriate setters.
+        """
+        for key, value in data.items():
+            if isinstance(value, dict):
+                # Nested table: add a new table and recurse
+                child = library.table_add_table(table, key)
+                self._fill_table_from_dict(child, value)
+            else:
+                library.table_set_value(table, key, value)
+
+    def set(self, key: str, value):
+        """
+        Update a parameter value by key.
+        """
+        library.dump_param(self._param, self._table)
+        library.table_set_value(self._table, key, value)
+        library.load_param(self._param, self._table)
 
     def get_param(self):
-        """
-        Retrieve the underlying tblite_param object.
-
-        Returns
-        -------
-        tblite_param
-            The tblite_param object wrapped by this class.
-        """
+        """Return the underlying tblite_param object."""
         return self._param
 
 

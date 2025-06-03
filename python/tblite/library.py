@@ -179,6 +179,20 @@ table_set_bool = error_check(lib.tblite_table_set_bool)
 table_set_char = error_check(lib.tblite_table_set_char)
 table_add_table = error_check(lib.tblite_table_add_table)
 
+def table_set_value(table, key: str, value):
+    """Set a value in a tblite data table object"""
+    if isinstance(value, float):
+        table_set_double(table, key, value, 0)
+    elif isinstance(value, int):
+        table_set_int64_t(table, key, value, 0)
+    elif isinstance(value, bool):
+        table_set_bool(table, key, value, 0)
+    elif isinstance(value, str):
+        table_set_char(table, key, value, 0)
+    else:
+        raise ValueError(f"Unsupported value type for key '{key}': {type(value)}")
+    return table
+
 
 def _delete_param(param) -> None:
     """Delete a tblite parametrization record object"""
@@ -197,7 +211,6 @@ dump_param = error_check(lib.tblite_dump_param)
 export_gfn2_param = error_check(lib.tblite_export_gfn2_param)
 export_gfn1_param = error_check(lib.tblite_export_gfn1_param)
 export_ipea1_param = error_check(lib.tblite_export_ipea1_param)
-add_post_processing_cli = error_check(lib.tblite_add_post_processing_cli)
 
 
 def _delete_result(result) -> None:
