@@ -35,7 +35,7 @@ module tblite_api_param
 
    public :: vp_param
    public :: new_param_api, delete_param_api
-   public :: load_param_api, dump_param_api
+   public :: load_param_api, dump_param_api, write_param_api
    public :: export_gfn1_param_api, export_gfn2_param_api, export_ipea1_param_api
 
    !> Void pointer to manage parametrization records
@@ -139,6 +139,39 @@ subroutine dump_param_api(verror, vparam, vtable) &
    call param%ptr%dump(table%ptr, error%ptr)
 
 end subroutine dump_param_api
+
+
+!> Write parametrization record to a file
+subroutine write_param_api(verror, vparam, file) &
+      & bind(C, name=namespace//"write_param")
+   type(c_ptr), value :: verror
+   type(vp_error), pointer :: error
+   type(c_ptr), value :: vparam
+   type(vp_param), pointer :: param
+   character(len=*), intent(in) :: file
+
+   if (debug) print '("[Info]", 1x, a)', "write_param"
+
+   ! Check if the error handle is associated
+   if (.not.c_associated(verror)) return
+   call c_f_pointer(verror, error)
+
+   ! Check if the parameter object is associated
+   if (.not.c_associated(vparam)) then
+      call fatal_error(error%ptr, "Parametrization record is missing")
+      return
+   end if
+   call c_f_pointer(vparam, param)
+
+   ! Call the dump_to_file subroutine
+   call param%ptr%dump_to_file(file, error%ptr)
+
+   ! Check for errors
+   if (allocated(error%ptr)) then
+      call fatal_error(error%ptr, "Failed to write parametrization record to file")
+   end if
+
+end subroutine write_param_api
 
 
 subroutine export_gfn1_param_api(verror, vparam) &

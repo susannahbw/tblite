@@ -208,6 +208,7 @@ def new_param():
 
 load_param = error_check(lib.tblite_load_param)
 dump_param = error_check(lib.tblite_dump_param)
+write_param = error_check(lib.tblite_write_param)
 export_gfn2_param = error_check(lib.tblite_export_gfn2_param)
 export_gfn1_param = error_check(lib.tblite_export_gfn1_param)
 export_ipea1_param = error_check(lib.tblite_export_ipea1_param)

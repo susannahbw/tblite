@@ -786,13 +786,23 @@ class Parameters:
         """
         Update a parameter value by key.
         """
+        self._table = library.new_table()
         library.dump_param(self._param, self._table)
         library.table_set_value(self._table, key, value)
+        self._param = library.new_param()
         library.load_param(self._param, self._table)
 
     def get_param(self):
         """Return the underlying tblite_param object."""
         return self._param
+    
+    def write_to_file(self, file_path: str):
+        """
+        Write the parameters to a TOML file.
+        """
+        if not file_path.endswith(".toml"):
+            raise TBLiteValueError("File path must end with '.toml'.")
+        library.write_param(self._param, file_path.encode())
 
 
 def _cast(ctype, array):

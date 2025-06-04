@@ -65,6 +65,16 @@ tblite_dump_param(tblite_error error,
                   tblite_param param,
                   tblite_table table);
 
+/// Write parametrization records to file
+///
+/// @param error: Handle for error messages
+/// @param param: Parametrization records
+/// @param file: Name of output file
+TBLITE_API_ENTRY void TBLITE_API_CALL
+tblite_write_param(tblite_error error,
+                  tblite_param param,
+                  string file);
+
 /// Export GFN2-xTB parametrization records
 ///
 /// @param error: Handle for error messages
