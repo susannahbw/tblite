@@ -752,6 +752,7 @@ class Parameters:
         """
         self._param = library.new_param()
         self._table = library.new_table()
+        self._dict = {}
 
         if method.upper() == "GFN2-XTB":
             library.export_gfn2_param(self._param)
@@ -763,9 +764,9 @@ class Parameters:
             if param_path is None or not os.path.isfile(param_path):
                 raise TBLiteValueError(
                     "For 'custom', a valid 'filepath' kwarg must be provided.")
-            data = toml.load(param_path)
+            self._dict = toml.load(param_path)
             self._table = library.new_table()
-            self._fill_table_from_dict(self._table, data)
+            self._fill_table_from_dict(self._table, self._dict)
             library.load_param(self._param, self._table)
         else:
             raise TBLiteValueError(f"Unknown method '{method}'.")
@@ -782,6 +783,15 @@ class Parameters:
             else:
                 library.table_set_value(table, key, value)
 
+    def _param_to_dict(self, keep_file: bool = False, filename: str = "temp.toml"):
+        """
+        Convert a tblite_param object to a Python dict.
+        """
+        self.write_to_file(filename)
+        self._dict = toml.load(filename)
+        if not keep_file:
+            os.remove(filename)
+
     def set(self, key: str, value):
         """
         Update a parameter value by key.
@@ -791,6 +801,14 @@ class Parameters:
         library.table_set_value(self._table, key, value)
         self._param = library.new_param()
         library.load_param(self._param, self._table)
+
+    def get(self, key: str):
+        """
+        Get a parameter value by key.
+        """
+        if not self._dict:
+            self._param_to_dict()
+        return self._dict.get(key, None)
 
     def get_param(self):
         """Return the underlying tblite_param object."""
