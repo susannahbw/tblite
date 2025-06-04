@@ -748,6 +748,12 @@ int test_uninitialized_table(void)
 
     show(error);
 
+    tblite_write_param(error, param, "test_dump.toml");
+    if (!tblite_check(error))
+        goto unexpected;
+
+    show(error);
+
     double dval = 0.0;
     tblite_table_set_value(error, table, key, &dval, 0);
     if (!tblite_check(error))
@@ -811,6 +817,12 @@ int test_uninitialized_param(void)
     show(error);
 
     tblite_dump_param(error, param, table);
+    if (!tblite_check(error))
+        goto unexpected;
+
+    show(error);
+
+    tblite_write_param(error, param, "test_dump.toml");
     if (!tblite_check(error))
         goto unexpected;
 
@@ -1086,6 +1098,10 @@ int test_param_load(void)
 
     table = tblite_new_table(NULL);
     tblite_dump_param(error, param, table);
+    if (tblite_check(error))
+        goto err;
+
+    tblite_write_param(error, param, "test_dump.toml");
     if (tblite_check(error))
         goto err;
 
