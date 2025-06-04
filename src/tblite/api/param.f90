@@ -163,8 +163,8 @@ subroutine write_param_api(verror, vparam, file) &
    end if
    call c_f_pointer(vparam, param)
 
-   ! Call the dump_to_file subroutine
-   call param%ptr%dump_to_file(file, error%ptr)
+   ! Call the dump_to_file subroutine via public dump interface
+   call param%ptr%dump(file, error%ptr)
 
    ! Check for errors
    if (allocated(error%ptr)) then

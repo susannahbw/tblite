@@ -73,7 +73,7 @@ tblite_dump_param(tblite_error error,
 TBLITE_API_ENTRY void TBLITE_API_CALL
 tblite_write_param(tblite_error error,
                   tblite_param param,
-                  string file);
+                  char* file);
 
 /// Export GFN2-xTB parametrization records
 ///
