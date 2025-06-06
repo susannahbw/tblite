@@ -25,6 +25,7 @@ module tblite_api_param
    use tblite_api_table, only : vp_table
    use tblite_api_version, only : namespace
    use tblite_api_utils, only : f_c_character
+   use tblite_api_utils, only : c_f_character
    use tblite_param, only : param_record
    use tblite_toml, only : toml_table
    use tblite_xtb_gfn1, only : export_gfn1_param
@@ -148,7 +149,8 @@ subroutine write_param_api(verror, vparam, file) &
    type(vp_error), pointer :: error
    type(c_ptr), value :: vparam
    type(vp_param), pointer :: param
-   character(len=*), intent(in) :: file
+   character(kind=c_char), intent(in) :: file(*)
+   character(len=:), allocatable :: fortran_file
 
    if (debug) print '("[Info]", 1x, a)', "write_param"
 
@@ -163,8 +165,11 @@ subroutine write_param_api(verror, vparam, file) &
    end if
    call c_f_pointer(vparam, param)
 
+   ! Convert C-compatible string to Fortran string
+   call c_f_character(file, fortran_file)
+
    ! Call the dump_to_file subroutine via public dump interface
-   call param%ptr%dump(file, error%ptr)
+   call param%ptr%dump(fortran_file, error%ptr)
 
    ! Check for errors
    if (allocated(error%ptr)) then
