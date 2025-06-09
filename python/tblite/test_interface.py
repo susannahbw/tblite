@@ -20,7 +20,7 @@ import numpy as np
 from pytest import approx, raises
 
 from tblite.exceptions import TBLiteRuntimeError, TBLiteValueError
-from tblite.interface import Calculator, Result, symbols_to_numbers
+from tblite.interface import Calculator, Result, symbols_to_numbers, Parameters
 
 THR = 1.0e-9
 
@@ -747,3 +747,11 @@ def test_numbers():
     res = calc.singlepoint()
 
     assert res.get("energy") == approx(-3.763120637211, abs=THR)
+
+
+def test_parameter_load_standard_model():
+    "Test loading of default model parameters into Parameter object and"
+    "accessing them via the dict attribute"
+    params = Parameters("GFN1-xTB")
+    ham = params.get("hamiltonian")
+    print(ham)
