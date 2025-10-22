@@ -13,11 +13,14 @@ module test_xtbml
    use tblite_data_spin, only : get_spin_constant
    use tblite_double_dictionary, only : double_dictionary_type
    use tblite_integral_type, only : integral_type
+   use tblite_io_numpy, only : save_npz
    use tblite_param_post_processing, only : post_processing_param_list
    use tblite_param_serde, only : serde_record
    use tblite_param_xtbml_features, only : xtbml_features_record
    use tblite_post_processing_list, only : add_post_processing, post_processing_list
    use tblite_results, only : results_type
+   use tblite_solvation, only : alpb_input, solvent_data, alpb_solvation, new_alpb, get_solvent_data, &
+      & cpcm_input, cpcm_solvation, new_cpcm
    use tblite_spin, only : spin_polarization, new_spin_polarization
    use tblite_toml, only : toml_table, add_table, set_value, toml_key, get_value, toml_array, add_array
    use tblite_wavefunction , only : wavefunction_type, new_wavefunction
@@ -696,41 +699,35 @@ subroutine test_orbital_energy_ref(error)
    !> Error handling
    integer,parameter :: nat = 3
    type(error_type), allocatable, intent(out) :: error
-   real(wp), parameter :: xyz(3, nat) = reshape((/0.00000,0.00000,1.0000000,&
-   &0.0000,0.00000,-1.0000000,&
-   &0.000000,0.000000,0.000000/),shape=(/3,nat/))
+   real(wp), parameter :: xyz(3, nat) = reshape([&
+      & 0.000000_wp, 0.000000_wp,  1.0000000_wp,&
+      & 0.000000_wp, 0.000000_wp, -1.0000000_wp,&
+      & 0.000000_wp, 0.000000_wp,  0.0000000_wp], shape=shape(xyz))
 
    integer, parameter :: num(nat) = (/8,8,6/)
    type(results_type) :: res, res_
    real(wp) :: energy = 0.0_wp
    real(wp), allocatable :: xtbml(:,:),xtbml_rot(:,:),xtbml_trans(:,:)
    integer :: i
-   integer :: io
 
-   open(newunit=io, status="scratch")
-   write(io, '(a)') &
-      "response_alpha = [ 0.1337835451437173, 0.1337835451437157, 1.6307951377273491 ]", &
-      "gap_alpha = [ 0.0095881103175756, 0.0095881103175756, 0.0011085237545836 ]", &
-      "chem_pot_alpha = [ -0.9622382191942670, -0.9622382191942677, -0.8758044318869692 ]", &
-      "HOAO_alpha = [ -0.9670322743530548, -0.9670322743530555, -0.8763586937642610 ]", &
-      "LUAO_alpha = [ -0.9574441640354792, -0.9574441640354798, -0.8752501700096774 ]", &
-      "response_beta = [ 1.2449917888491431, 1.2449917888491182, 0.0059865937960335 ]", &
-      "gap_beta = [ 0.0806953599842188, 0.0806953599842184, 19.4997052573882037 ]", &
-      "chem_pot_beta = [ -15.1513328627176183, -15.1513328627176254, -8.6913073970860637 ]", &
-      "HOAO_beta = [ -15.1916805427097277, -15.1916805427097348, -18.4411600257801638 ]", &
-      "LUAO_beta = [ -15.1109851827255088, -15.1109851827255159, 1.0585452316080382 ]", &
-      "ext_gap_alpha = [ 0.0054951699014186, 0.0054951699014186, 0.0067615787201293 ]", &
-      "ext_chem_pot_alpha = [ -0.9205182203755125, -0.9205182203755127, -0.9334269287974830 ]", &
-      "ext_HOAO_alpha = [ -0.9232658053262217, -0.9232658053262219, -0.9368077181575476 ]", &
-      "ext_LUAO_alpha = [ -0.9177706354248032, -0.9177706354248034, -0.9300461394374184 ]", &
-      "ext_gap_beta = [ 9.4593893126801003, 9.4593893126801003, 6.5604665198186094 ]", &
-      "ext_chem_pot_beta = [ -12.9537156502782160, -12.9537156502782196, -13.9314158798429979 ]", &
-      "ext_HOAO_beta = [ -17.6834103066182671, -17.6834103066182706, -17.2116491397523035 ]", &
-      "ext_LUAO_beta = [ -8.2240209939381650, -8.2240209939381685, -10.6511826199336923 ]", &
-      ""
-   rewind io
-   call dict_ref%load(io, error)
-   close(io)
+   call dict_ref%add_entry("response_alpha", [ 0.1337835451437173_wp, 0.1337835451437157_wp, 1.6307951377273491_wp])
+   call dict_ref%add_entry("gap_alpha", [ 0.0095881103175756_wp, 0.0095881103175756_wp, 0.0011085237545836_wp])
+   call dict_ref%add_entry("chem_pot_alpha", [ -0.9622382191942670_wp, -0.9622382191942677_wp, -0.8758044318869692_wp])
+   call dict_ref%add_entry("HOAO_alpha", [ -0.9670322743530548_wp, -0.9670322743530555_wp, -0.8763586937642610_wp])
+   call dict_ref%add_entry("LUAO_alpha", [ -0.9574441640354792_wp, -0.9574441640354798_wp, -0.8752501700096774_wp])
+   call dict_ref%add_entry("response_beta", [ 1.2449917888491431_wp, 1.2449917888491182_wp, 0.0059865937960335_wp])
+   call dict_ref%add_entry("gap_beta", [ 0.0806953599842188_wp, 0.0806953599842184_wp, 19.4997052573882037_wp])
+   call dict_ref%add_entry("chem_pot_beta", [ -15.1513328627176183_wp, -15.1513328627176254_wp, -8.6913073970860637_wp])
+   call dict_ref%add_entry("HOAO_beta", [ -15.1916805427097277_wp, -15.1916805427097348_wp, -18.4411600257801638_wp])
+   call dict_ref%add_entry("LUAO_beta", [ -15.1109851827255088_wp, -15.1109851827255159_wp, 1.0585452316080382_wp])
+   call dict_ref%add_entry("ext_gap_alpha", [ 0.0054951699014186_wp, 0.0054951699014186_wp, 0.0067615787201293_wp])
+   call dict_ref%add_entry("ext_chem_pot_alpha", [ -0.9205182203755125_wp, -0.9205182203755127_wp, -0.9334269287974830_wp])
+   call dict_ref%add_entry("ext_HOAO_alpha", [ -0.9232658053262217_wp, -0.9232658053262219_wp, -0.9368077181575476_wp])
+   call dict_ref%add_entry("ext_LUAO_alpha", [ -0.9177706354248032_wp, -0.9177706354248034_wp, -0.9300461394374184_wp])
+   call dict_ref%add_entry("ext_gap_beta", [ 9.4593893126801003_wp, 9.4593893126801003_wp, 6.5604665198186094_wp])
+   call dict_ref%add_entry("ext_chem_pot_beta", [ -12.9537156502782160_wp, -12.9537156502782196_wp, -13.9314158798429979_wp])
+   call dict_ref%add_entry("ext_HOAO_beta", [ -17.6834103066182671_wp, -17.6834103066182706_wp, -17.2116491397523035_wp])
+   call dict_ref%add_entry("ext_LUAO_beta", [ -8.2240209939381650_wp, -8.2240209939381685_wp, -10.6511826199336923_wp])
 
    call new(mol,num,xyz*aatoau,uhf=2,charge=0.0_wp)
    call new_gfn2_calculator(calc,mol, error)
@@ -1068,6 +1065,20 @@ subroutine test_energy_sum_up_gfn2(error)
       call calc%push_back(cont)
    end block
 
+   block
+      class(container_type), allocatable :: cont
+      type(alpb_solvation), allocatable :: solv
+      type(alpb_input) :: alpb_inp
+      type(solvent_data), allocatable :: solvent
+      solvent = get_solvent_data("water")
+      alpb_inp = alpb_input(solvent%eps, solvent=solvent%solvent, &
+         kernel=1, alpb=.true.)
+      allocate(solv)
+      call new_alpb(solv, mol, alpb_inp,"gfn2")
+      call move_alloc(solv, cont)
+      call calc%push_back(cont)
+   end block
+
    call new_wavefunction(wfn, mol%nat, calc%bas%nsh, calc%bas%nao, 1, kt)
    allocate(pproc)
    allocate(xtbml_param)
@@ -1076,14 +1087,15 @@ subroutine test_energy_sum_up_gfn2(error)
    call move_alloc(xtbml_param, tmp_record)
    call pparam%push(tmp_record)
    call add_post_processing(pproc, pparam)
+
    call xtb_singlepoint(ctx, mol, calc, wfn, acc, energy, verbosity=0, results=res, post_process=pproc)
 
    call res%dict%get_entry("E_tot", tmp_array)
    sum_energy = sum_energy + sum(tmp_array)
-   print'(3es21.14)', abs(sum_energy-energy)
+   ! print'(3es21.14)', abs(sum_energy-energy)
    if (abs(sum_energy-energy)  > thr) then
       call test_failed(error, "GFN2: Energy features don't add up to total energy.")
-      print'(3es21.14)', abs(sum_energy-energy)
+      ! print'(3es21.14)', abs(sum_energy-energy)
    end if
 
 
@@ -1097,10 +1109,10 @@ subroutine test_energy_sum_up_gfn2(error)
       sum_energy = sum_energy + sum(tmp_array)
       deallocate(tmp_array)
    end do
-   print'(3es21.14)', abs(sum_energy-energy)
+   ! print'(3es21.14)', abs(sum_energy-energy)
    if (abs(sum_energy-energy)  > thr) then
       call test_failed(error, "GFN2: Energy features don't add up to total energy.")
-      print'(3es21.14)', abs(sum_energy-energy)
+      ! print'(3es21.14)', abs(sum_energy-energy)
    end if
 
 end subroutine test_energy_sum_up_gfn2
@@ -1149,6 +1161,18 @@ subroutine test_energy_sum_up_gfn1(error)
    xtbml_param%xtbml_energy = .true.
    call move_alloc(xtbml_param, tmp_record)
    call pparam%push(tmp_record)
+
+   block
+      class(container_type), allocatable :: cont
+      type(cpcm_solvation), allocatable :: solv
+      type(cpcm_input) :: cpcm_inp
+      cpcm_inp = cpcm_input(4.0)
+      allocate(solv)
+      call new_cpcm(solv, mol, cpcm_inp, error)
+      call move_alloc(solv, cont)
+      call calc%push_back(cont)
+   end block
+
    call add_post_processing(pproc, pparam)
    call xtb_singlepoint(ctx, mol, calc, wfn, acc, energy, verbosity=0, results=res, post_process=pproc)
 
