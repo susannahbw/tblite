@@ -762,8 +762,8 @@ def test_numbers():
 
 
 def test_parameter_load_standard_model():
-    "Test loading of default model parameters into Parameter object and"
-    "accessing them via the dict attribute"
+    """Test loading of default model parameters into Parameter object and accessing them via the dict
+    attribute"""
     params = Parameters("GFN1-xTB")
     ham = params.get("hamiltonian")
     print(ham)

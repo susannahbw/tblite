@@ -89,6 +89,7 @@ subroutine load_param_api(verror, vparam, vtable) &
    type(c_ptr), value :: vtable
    type(vp_table), pointer :: table
 
+   print *, "load_param"
    if (debug) print '("[Info]", 1x, a)', "load_param"
 
    if (.not.c_associated(verror)) return
@@ -152,6 +153,7 @@ subroutine write_param_api(verror, vparam, file) &
    character(kind=c_char), intent(in) :: file(*)
    character(len=:), allocatable :: fortran_file
 
+   print *, "write_param"
    if (debug) print '("[Info]", 1x, a)', "write_param"
 
    ! Check if the error handle is associated
@@ -166,10 +168,14 @@ subroutine write_param_api(verror, vparam, file) &
    call c_f_pointer(vparam, param)
 
    ! Convert C-compatible string to Fortran string
+   print *, "Converting file path"
    call c_f_character(file, fortran_file)
+   print *, "Converted file path:", trim(fortran_file)
 
    ! Call the dump_to_file subroutine via public dump interface
+   print *, "Calling param%ptr%dump"
    call param%ptr%dump(fortran_file, error%ptr)
+   print *, "Finished param%ptr%dump"
 
    ! Check for errors
    if (allocated(error%ptr)) then
