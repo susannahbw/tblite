@@ -767,4 +767,6 @@ def test_parameter_load_standard_model():
 
     params = Parameters("GFN2-xTB")
     ham = params.get("hamiltonian")
-    assert (ham['xtb']['wexp']) == 0.5
+    assert ham['xtb']['wexp'] == 0.5
+    wexp = params.get("hamiltonian").get("xtb").get("wexp")
+    assert wexp
