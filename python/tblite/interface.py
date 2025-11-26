@@ -818,15 +818,25 @@ class Parameters:
         if not keep_file:
             os.remove(filename)
 
-    def set(self, key: str, value):
+    def set(self, keys: list[str], value):
         """
         Update a parameter value by key.
         """
+        self._param_to_dict()
+        update_nested_dict(self._dict, keys, value)
         self._table = library.new_table()
-        library.dump_param(self._param, self._table)
-        library.table_set_value(self._table, key, value)
-        self._param = library.new_param()
+        self._fill_table_from_dict(self._table, self._dict)
         library.load_param(self._param, self._table)
+        #self._table = library.new_table()
+        #library.dump_param(self._param, self._table)
+        #print('orig table', self._table)
+        #print('type key', type(key))
+        #print('type value', type(value))
+        #library.table_set_value(self._table, key, value)
+        #print('new table', self._table)
+        #self._param = library.new_param()
+        #library.load_param(self._param, self._table)
+        #print('updated param', self.get("hamiltonian"))
 
     def get(self, key: str):
         """
@@ -897,3 +907,19 @@ SYMBOL_TO_NUMBER = {
 def symbols_to_numbers(symbols: List[str]) -> List[int]:
     """Convert a list of atomic symbols to atomic numbers."""
     return [SYMBOL_TO_NUMBER[symbol] for symbol in symbols]
+
+def update_nested_dict(nested_dict, keys, new_value):
+    """Update a value in any level of a nested dictionary given a list of keys that act
+    as a path to the value to be updated.
+    
+    Function taken as code snippet from:
+    https://www.tutorialspoint.com/update-a-nested-dictionary-in-python
+    26/11/2025
+    """
+    if len(keys) == 1:
+        nested_dict[keys[0]] = new_value
+    else:
+        key = keys[0]
+        if key in nested_dict:
+            update_nested_dict(nested_dict[key], keys[1:], new_value)
+    return

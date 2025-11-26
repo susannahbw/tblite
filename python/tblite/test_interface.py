@@ -770,3 +770,22 @@ def test_parameter_load_standard_model():
     assert ham['xtb']['wexp'] == 0.5
     wexp = params.get("hamiltonian").get("xtb").get("wexp")
     assert wexp
+
+def test_parameter_set():
+    """Test setting of model parameters into Parameter object"""
+
+    params = Parameters("GFN2-xTB")
+    #print('params_orig', params.get("hamiltonian"))
+    #ham = params.get("hamiltonian")
+    new_wexp = 1.0
+    keys = ["hamiltonian", "xtb", "wexp"]
+    #ham['xtb']['wexp'] = new_wexp
+    params.set(keys, new_wexp)
+    wexp = params.get("hamiltonian").get("xtb").get("wexp")
+    print('wexp', wexp, 'new_wexp', new_wexp)
+    assert wexp == new_wexp
+
+    # Check that parameter setting only affects the current instance
+    params2 = Parameters("GFN2-xTB")
+    wexp2 = params2.get("hamiltonian").get("xtb").get("wexp")
+    assert wexp2 == 0.5

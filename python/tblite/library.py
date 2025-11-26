@@ -181,8 +181,12 @@ table_add_table = error_check(lib.tblite_table_add_table)
 
 def table_set_value(table, key: str, value):
     """Set a value in a tblite data table object"""
+    key = key.encode("utf-8")  # Convert str to bytes
+
     if isinstance(value, float):
-        table_set_double(table, key, value, 0)
+        # Create a CFFI double pointer for the float value
+        c_value = ffi.new("double *", value)
+        table_set_double(table, key, c_value, 0)
     elif isinstance(value, int):
         table_set_int64_t(table, key, value, 0)
     elif isinstance(value, bool):
