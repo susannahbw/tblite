@@ -802,11 +802,16 @@ class Parameters:
         Recursively fill a tblite table from a Python dict using the appropriate setters.
         """
         for key, value in data.items():
+            print(f'Processing key: {key} with value: {value} of type {type(value)}')
             if isinstance(value, dict):
                 # Nested table: add a new table and recurse
-                child = library.table_add_table(table, key)
+                print(f'Creating nested table for key: {key}')
+                ckey = key.encode("utf-8")
+                child = library.table_add_table(table, ckey)
+                print(f'Adding nested table for key: {key}')
                 self._fill_table_from_dict(child, value)
             else:
+                print(f'Setting key: {key} with value: {value} of type {type(value)}')
                 library.table_set_value(table, key, value)
 
     def _param_to_dict(self, keep_file: bool = False, filename: str = "temp.toml"):
@@ -822,10 +827,16 @@ class Parameters:
         """
         Update a parameter value by key.
         """
+        print('convert param to dict')
         self._param_to_dict()
+        print('update nested dict')
         update_nested_dict(self._dict, keys, value)
+        print('new wexp', self.get("hamiltonian").get("xtb").get("wexp"))
+        print('create new table')
         self._table = library.new_table()
+        print('fill table from dict')
         self._fill_table_from_dict(self._table, self._dict)
+        print('load param from table')
         library.load_param(self._param, self._table)
         #self._table = library.new_table()
         #library.dump_param(self._param, self._table)

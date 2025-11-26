@@ -775,7 +775,7 @@ def test_parameter_set():
     """Test setting of model parameters into Parameter object"""
 
     params = Parameters("GFN2-xTB")
-    #print('params_orig', params.get("hamiltonian"))
+    print('params_orig', params.get("hamiltonian").get("xtb").get("wexp"))
     #ham = params.get("hamiltonian")
     new_wexp = 1.0
     keys = ["hamiltonian", "xtb", "wexp"]

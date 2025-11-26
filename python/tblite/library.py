@@ -179,20 +179,22 @@ table_set_bool = error_check(lib.tblite_table_set_bool)
 table_set_char = error_check(lib.tblite_table_set_char)
 table_add_table = error_check(lib.tblite_table_add_table)
 
-def table_set_value(table, key: str, value):
+def table_set_value(table, key: bytes, value):
     """Set a value in a tblite data table object"""
-    key = key.encode("utf-8")  # Convert str to bytes
-
+    c_key = key.encode("utf-8")
     if isinstance(value, float):
         # Create a CFFI double pointer for the float value
         c_value = ffi.new("double *", value)
-        table_set_double(table, key, c_value, 0)
+        table_set_double(table, c_key, c_value, 0)
     elif isinstance(value, int):
-        table_set_int64_t(table, key, value, 0)
+        c_value = ffi.new("int64_t *", value)
+        table_set_int64_t(table, c_key, c_value, 0)
     elif isinstance(value, bool):
-        table_set_bool(table, key, value, 0)
+        c_value = int(value)
+        table_set_bool(table, c_key, c_value, 0)
     elif isinstance(value, str):
-        table_set_char(table, key, value, 0)
+        c_value = ffi.new("char[]", value.encode("utf-8"))
+        table_set_char(table, c_key, c_value, 0)
     else:
         raise ValueError(f"Unsupported value type for key '{key}': {type(value)}")
     return table
