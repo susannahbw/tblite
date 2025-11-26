@@ -182,17 +182,25 @@ table_add_table = error_check(lib.tblite_table_add_table)
 def table_set_value(table, key: bytes, value):
     """Set a value in a tblite data table object"""
     c_key = key.encode("utf-8")
-    if isinstance(value, float):
+
+    datatype = type(value)
+    if datatype == list:
+        if all(isinstance(x, type[value[0]]) for x in value):
+            datatype = type[value[0]]
+        else:         
+            raise ValueError(f"Unsupported mixed-type list for key '{key}'")
+
+    if datatype == float:
         # Create a CFFI double pointer for the float value
         c_value = ffi.new("double *", value)
         table_set_double(table, c_key, c_value, 0)
-    elif isinstance(value, int):
+    elif datatype == int:
         c_value = ffi.new("int64_t *", value)
         table_set_int64_t(table, c_key, c_value, 0)
-    elif isinstance(value, bool):
-        c_value = int(value)
+    elif datatype == bool:
+        c_value = ffi.new("_Bool *", value)
         table_set_bool(table, c_key, c_value, 0)
-    elif isinstance(value, str):
+    elif datatype == str:
         c_value = ffi.new("char[]", value.encode("utf-8"))
         table_set_char(table, c_key, c_value, 0)
     else:
