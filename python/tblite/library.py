@@ -183,28 +183,34 @@ def table_set_value(table, key: bytes, value):
     """Set a value in a tblite data table object"""
     c_key = key.encode("utf-8")
 
-    datatype = type(value)
-    if datatype == list:
+    if isinstance(value, float):   
+        c_value = ffi.new("double *", value)
+        table_set_double(table, c_key, c_value, 0) 
+    elif isinstance(value, int):
+        c_value = ffi.new("int64_t *", value)
+        table_set_int64_t(table, c_key, c_value, 0)
+    elif isinstance(value, bool):
+        c_value = ffi.new("_Bool *", value)
+        table_set_bool(table, c_key, c_value, 0)
+    elif isinstance(value, str):
+        c_value = ffi.new("char[]", value.encode("utf-8"))
+        table_set_char(table, c_key, c_value, 0)
+    elif isinstance(value, list):
         if all(isinstance(x, type(value[0])) for x in value):
             datatype = type(value[0])
         else:         
             raise ValueError(f"Unsupported mixed-type list for key '{key}'")
-
-    if datatype == float:
-        if isinstance(value, list):
+        
+        if datatype == float:
             c_value = ffi.new("double[]", value)  # Create array
             table_set_double(table, c_key, c_value, len(value))  # Pass count n
-        else:
-            c_value = ffi.new("double *", value)
-            table_set_double(table, c_key, c_value, 0)  # Scalar
-    elif datatype == int:
-        c_value = ffi.new("int64_t *", value)
-        table_set_int64_t(table, c_key, c_value, 0)
-    elif datatype == bool:
-        c_value = ffi.new("_Bool *", value)
-        table_set_bool(table, c_key, c_value, 0)
-    elif datatype == str:
-        if isinstance(value, list):
+        elif datatype == int:
+            c_value = ffi.new("int64_t[]", value)
+            table_set_int64_t(table, c_key, c_value, len(value))
+        elif datatype == bool:
+            c_value = ffi.new("_Bool[]", value)
+            table_set_bool(table, c_key, c_value, len(value))
+        elif datatype == str:
             # compute stride and allocate contiguous buffer
             n = len(value)
             encoded = [s.encode("utf-8") for s in value]
@@ -220,10 +226,10 @@ def table_set_value(table, key: bytes, value):
                 buf[offset : offset + len(s)] = s 
                 table_set_char(table, c_key, buf, n)
         else:
-            c_value = ffi.new("char[]", value.encode("utf-8"))
-            table_set_char(table, c_key, c_value, 0)
+            raise ValueError(f"Unsupported value type for key '{key}': {type(value[0])}")
     else:
         raise ValueError(f"Unsupported value type for key '{key}': {type(value)}")
+
     return table
 
 
