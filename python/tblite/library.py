@@ -185,8 +185,8 @@ def table_set_value(table, key: bytes, value):
 
     datatype = type(value)
     if datatype == list:
-        if all(isinstance(x, type[value[0]]) for x in value):
-            datatype = type[value[0]]
+        if all(isinstance(x, type(value[0])) for x in value):
+            datatype = type(value[0])
         else:         
             raise ValueError(f"Unsupported mixed-type list for key '{key}'")
 
@@ -201,8 +201,24 @@ def table_set_value(table, key: bytes, value):
         c_value = ffi.new("_Bool *", value)
         table_set_bool(table, c_key, c_value, 0)
     elif datatype == str:
-        c_value = ffi.new("char[]", value.encode("utf-8"))
-        table_set_char(table, c_key, c_value, 0)
+        if isinstance(value, list):
+            # compute stride and allocate contiguous buffer
+            n = len(value)
+            encoded = [s.encode("utf-8") for s in value]
+            encoded_0 = "0".encode("utf-8")
+            maxlen = max(len(s) for s in encoded) if n > 0 else 0
+            stride = maxlen + 1  # include terminator
+            total = stride * n
+            buf = ffi.new(f"char[{total}]", encoded_0 * total)
+            
+            # place each string in column-major layout expected by Fortran (column = i)
+            for i, s in enumerate(encoded):
+                offset = i * stride
+                buf[offset : offset + len(s)] = s 
+                table_set_char(table, c_key, buf, n)
+        else:
+            c_value = ffi.new("char[]", value.encode("utf-8"))
+            table_set_char(table, c_key, c_value, 0)
     else:
         raise ValueError(f"Unsupported value type for key '{key}': {type(value)}")
     return table
