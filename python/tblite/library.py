@@ -191,9 +191,12 @@ def table_set_value(table, key: bytes, value):
             raise ValueError(f"Unsupported mixed-type list for key '{key}'")
 
     if datatype == float:
-        # Create a CFFI double pointer for the float value
-        c_value = ffi.new("double *", value)
-        table_set_double(table, c_key, c_value, 0)
+        if isinstance(value, list):
+            c_value = ffi.new("double[]", value)  # Create array
+            table_set_double(table, c_key, c_value, len(value))  # Pass count n
+        else:
+            c_value = ffi.new("double *", value)
+            table_set_double(table, c_key, c_value, 0)  # Scalar
     elif datatype == int:
         c_value = ffi.new("int64_t *", value)
         table_set_int64_t(table, c_key, c_value, 0)
@@ -210,7 +213,7 @@ def table_set_value(table, key: bytes, value):
             stride = maxlen + 1  # include terminator
             total = stride * n
             buf = ffi.new(f"char[{total}]", encoded_0 * total)
-            
+
             # place each string in column-major layout expected by Fortran (column = i)
             for i, s in enumerate(encoded):
                 offset = i * stride
